@@ -14,6 +14,11 @@ class Network{
         this.ws = new WebSocket(location.origin.replace(/^http/,'ws'))
         // ws
         this.ws.sendPayload = (destId,data)=>{
+            if(data.sdp){
+                console.log('Sending sdp')
+            }else{
+                console.log('Sending not')
+            }
             this.ws.send(JSON.stringify([destId,data]))
         }
 
@@ -38,7 +43,7 @@ class Network{
 
     handleSignallingServer = e => 
     {
-        console.log('handleSignallingServer e.data:',e.data)
+        // console.log('handleSignallingServer e.data:',e.data)
         if(this.peerList){
             // Two cases:
             // 1) A new peron is trying to establish a connection and has sent an offer
@@ -82,6 +87,8 @@ class Connection{
         this.localId = localId
         this.remoteId = remoteId
         this.ws = ws
+        this.dataChannel
+        this.candidateBacklog = []  // list of ice canidadates that have yet to been added
 
         this.setup()
         return this
@@ -93,16 +100,26 @@ class Connection{
         // ice
         this.pc.onicecandidate = this.gotIceCandidate
 
+        // datachannel
+        // this.pc.ondatachannel = 
+        this.pc.ondatachannel = this.dataChannelHandler
     }
     sendOffer(){
         // create dataChannel
         // !@#!@#!@# need to complete
+        this.dataChannel = this.pc.createDataChannel('憂')
+        this.setupDataChannel()
 
         // offer
         this.createSession(1)
     }
     gotIceCandidate = (e) =>{
+        // Send ice candidate to remote peer
         console.log('gotIceCandidate',e)
+        const candidate = e.candidate
+        if(candidate){
+            this.ws.sendPayload(this.remoteId,{ice:candidate})
+        }
     }
     createSession = async (isOffer) =>{
         try{
@@ -131,16 +148,51 @@ class Connection{
                         // Create answer
                         this.createSession(false)
                     }
+                    if(this.candidateBacklog.length>0){
+                        this.addBacklog()
+                    }
                 })
                 .catch(err=>console.warn(err))
         }else if(data.ice){
-
+            if(this.pc.remoteDescription){
+                // When can add ice candidate without it causing an error
+                this.pc.addIceCandidate(data.ice)
+                .then()
+                .catch(err=>console.warn(err))
+            }else{
+                // network.connections[1].pc.remoteDescription === null
+                // add to backlog to be added later
+                this.candidateBacklog.push(data.ice)
+            }
+            console.log('data.ice',data.ice)
         }else{
             console.warn('ERROR: this should not be happening! Make sure not to send anything from remote client if candidate == undefined')
         }
     }
-}
+    dataChannelHandler = e =>{
+        console.log('added the dataChannel')
+        this.dataChannel = e.channel
+        a.b = e.channel
+        this.setupDataChannel()
+    }
+    addBacklog(){
+        this.candidateBacklog.forEach(candidate=>{
+            this.pc.addIceCandidate(candidate)
+            .then()
+            .catch(err=>console.warn(err))
+        })
+    }
+    setupDataChannel(){
+        console.log('Datachannel established')
 
+        // this.dataChannel.addEventListener('message',e=>{
+        //     console.log('dataChannel message: ',e)
+        // })
+    }
+}
+a = {
+
+}
 
 const config = {
     iceServers:[
