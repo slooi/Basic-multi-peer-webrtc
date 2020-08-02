@@ -32,7 +32,7 @@ class Network{
         })
     }
     createConnection(remoteId=this.peerList[0]){  // $$$$$$$$$$
-        const connection = new Connection(this.localId,remoteId,this.ws)
+        const connection = new Connection(this.localId,remoteId,this.ws,this)
         this.connections[remoteId] = connection
 
         return connection
@@ -61,7 +61,7 @@ class Network{
                 const connection = this.createConnection(senderId)
                 connection.handleSignallingServer(data,false)
 
-
+                this.peerList.push(senderId)        // REMEMBER TO ATTACH TO peerList as otherwise you'll keep creating new connections!
                 // add senderId ? (might be good leaving it out for now for debugging purposes) !@#!@#!@#
             }else{
                 // You are the new person, case 2)
@@ -79,22 +79,32 @@ class Network{
             console.log('Your are: ',this.localId)
         }
     }
+    send(destId,data){
+        // Sends data to ONE connection
+        this.connections[destId].send(data)
+    }
+    broadcast(data){
+        // Send data to ALL connections
+        this.peerList.forEach(id=>{
+            this.connections[id].send(data)
+        })
+    }
 }
 
 class Connection{
-    constructor(localId,remoteId,ws){
+    constructor(localId,remoteId,ws,parent){
         this.pc
         this.localId = localId
         this.remoteId = remoteId
         this.ws = ws
         this.dataChannel
+        this.parent = parent
         this.candidateBacklog = []  // list of ice canidadates that have yet to been added
 
         this.setup()
         return this
     }
     setup(){
-        check(this)
         // Setup peerconnection 
         this.pc = new RTCPeerConnection(config)
 
@@ -106,7 +116,6 @@ class Connection{
         this.pc.ondatachannel = this.dataChannelHandler
     }
     sendOffer(){
-        check(this)
         // create dataChannel
         // !@#!@#!@# need to complete
         this.dataChannel = this.pc.createDataChannel('憂')
@@ -116,7 +125,6 @@ class Connection{
         this.createSession(1)
     }
     gotIceCandidate = (e) =>{
-        check(this)
         // Send ice candidate to remote peer
         console.log('gotIceCandidate',e)
         const candidate = e.candidate
@@ -125,7 +133,6 @@ class Connection{
         }
     }
     createSession = async (isOffer) =>{
-        check(this)
         try{
             let session
             if(isOffer){
@@ -141,7 +148,6 @@ class Connection{
         }
     }
     handleSignallingServer = async (data,isOfferer) =>{
-        check(this)
         //!@#!@#!@# handle for ice
 
         if(data.sdp){
@@ -175,14 +181,11 @@ class Connection{
         }
     }
     dataChannelHandler = e =>{
-        check(this)
         console.log('added the dataChannel')
         this.dataChannel = e.channel
-        a.b = e.channel
         this.setupDataChannel()
     }
     addBacklog(){
-        check(this)
         this.candidateBacklog.forEach(candidate=>{
             this.pc.addIceCandidate(candidate)
             .then()
@@ -190,16 +193,18 @@ class Connection{
         })
     }
     setupDataChannel(){
-        check(this)
         console.log('Datachannel established')
-
+        
+        this.dataChannel.addEventListener('message',e=>{
+            console.log('dataChannel message: ',e)
+        })
         // this.dataChannel.addEventListener('message',e=>{
         //     console.log('dataChannel message: ',e)
         // })
     }
-}
-a = {
-
+    send(data){
+        this.dataChannel.send(data)
+    }
 }
 
 const config = {
@@ -219,7 +224,7 @@ function check(that){
             console.log('network.connections',a)
             console.log('findDifferentKeys',findDifferentKeys(that,a))
         }
-        debugger
+        // debugger
     }
 }
 
