@@ -89,6 +89,17 @@ class Network{
             this.connections[id].send(data)
         })
     }
+    deleteConnection(remoteId){
+        // Remove from peerList
+        const indexOfId = this.peerList.indexOf(remoteId)
+        this.peerList.splice(indexOfId,1)
+
+        // Remove from connections
+        delete this.connections[remoteId]
+
+        // !@#!@#!@# NOTE there's a chance that connection peerList contains more ids than it should as a peer could have left before 
+        // a datachannel was established
+    }
 }
 
 class Connection{
@@ -198,9 +209,9 @@ class Connection{
         this.dataChannel.addEventListener('message',e=>{
             console.log('dataChannel message: ',e)
         })
-        // this.dataChannel.addEventListener('message',e=>{
-        //     console.log('dataChannel message: ',e)
-        // })
+        this.dataChannel.addEventListener('close',e=>{
+            console.log('dataChannel CLOSED: ',e)
+        })
     }
     send(data){
         this.dataChannel.send(data)
@@ -211,7 +222,23 @@ const config = {
     iceServers:[
         {urls: 'stun:stun.stunprotocol.org:3478'},
         {urls: 'stun:stun.l.google.com:19302'},
-    ]
+        {
+            url: 'turn:numb.viagenie.ca',
+            credential: 'muazkh',
+            username: 'webrtc@live.com'
+        },
+        {
+            url: 'turn:relay.backups.cz',
+            credential: 'webrtc',
+            username: 'webrtc'
+        },
+        {
+            url: 'turn:relay.backups.cz?transport=tcp',
+            credential: 'webrtc',
+            username: 'webrtc'
+        },
+    ],
+    iceTransportPolicy: 'all' 
 }
 
 function check(that){
