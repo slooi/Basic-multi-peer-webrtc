@@ -94,6 +94,7 @@ class Connection{
         return this
     }
     setup(){
+        check(this)
         // Setup peerconnection 
         this.pc = new RTCPeerConnection(config)
 
@@ -105,6 +106,7 @@ class Connection{
         this.pc.ondatachannel = this.dataChannelHandler
     }
     sendOffer(){
+        check(this)
         // create dataChannel
         // !@#!@#!@# need to complete
         this.dataChannel = this.pc.createDataChannel('憂')
@@ -114,6 +116,7 @@ class Connection{
         this.createSession(1)
     }
     gotIceCandidate = (e) =>{
+        check(this)
         // Send ice candidate to remote peer
         console.log('gotIceCandidate',e)
         const candidate = e.candidate
@@ -122,6 +125,7 @@ class Connection{
         }
     }
     createSession = async (isOffer) =>{
+        check(this)
         try{
             let session
             if(isOffer){
@@ -137,6 +141,7 @@ class Connection{
         }
     }
     handleSignallingServer = async (data,isOfferer) =>{
+        check(this)
         //!@#!@#!@# handle for ice
 
         if(data.sdp){
@@ -170,12 +175,14 @@ class Connection{
         }
     }
     dataChannelHandler = e =>{
+        check(this)
         console.log('added the dataChannel')
         this.dataChannel = e.channel
         a.b = e.channel
         this.setupDataChannel()
     }
     addBacklog(){
+        check(this)
         this.candidateBacklog.forEach(candidate=>{
             this.pc.addIceCandidate(candidate)
             .then()
@@ -183,6 +190,7 @@ class Connection{
         })
     }
     setupDataChannel(){
+        check(this)
         console.log('Datachannel established')
 
         // this.dataChannel.addEventListener('message',e=>{
@@ -199,4 +207,53 @@ const config = {
         {urls: 'stun:stun.stunprotocol.org:3478'},
         {urls: 'stun:stun.l.google.com:19302'},
     ]
+}
+
+function check(that){
+    const a = network.connections[Object.keys(network.connections)[0]]
+    addToUniqueList(that)
+    if(Object.keys(network.connections).length>0){
+        console.log('#####',that===a)
+        if((that===a)===false){
+            console.log('that',that)
+            console.log('network.connections',a)
+            console.log('findDifferentKeys',findDifferentKeys(that,a))
+        }
+        debugger
+    }
+}
+
+function findDifferentKeys(a,b){
+    const nonMatching = []
+    nonMatching.push(...findDifferentKeys2(a,b))
+    nonMatching.push(...findDifferentKeys2(b,a))
+    return nonMatching
+}
+
+function findDifferentKeys2(a,b){
+    const nonMatching = []
+    aList = Object.keys(a)
+    bList = Object.keys(b)
+    for(let i=0;i<aList.length;i++){
+        let foundMatch = false
+        for(let j=0;j<bList.length;j++){
+            if(aList[i] === bList[j]){
+                foundMatch = true
+                break
+            }
+        }
+
+        if(foundMatch === false){
+            nonMatching.push(aList[i])
+        }
+    }
+    return nonMatching
+}
+
+var uniqueList = []
+
+function addToUniqueList(item){
+    if(uniqueList.indexOf(item)===-1){
+        uniqueList.push(item)
+    }
 }
