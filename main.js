@@ -58,18 +58,23 @@ wss.on('connection',ws=>{
         const data = payload[1]
 
         const destWs = idWebsocketPair.getWs(destId)
-        const senderId = idWebsocketPair.getId(ws)
-
-        // Modify payload
-        const newPayload = JSON.stringify([senderId,data])
-
-        // Send
-        destWs.send(newPayload)
-
-        console.log('payload',payload)
+        if(destWs !== -1){
+            const senderId = idWebsocketPair.getId(ws)
+    
+            // Modify payload
+            const newPayload = JSON.stringify([senderId,data])
+    
+            // Send
+            console.log('sending to destId:',destId)
+            destWs.send(newPayload)
+    
+            console.log('payload',payload)
+        }
     })
     ws.on('close',e=>{
+        console.log('BEFORE',idWebsocketPair)
         idWebsocketPair.deleteByWs(ws)
+        console.log('AFTER',idWebsocketPair)
     })
 })
 

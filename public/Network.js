@@ -6,7 +6,7 @@ class Network{
         this.connections = {}
         this.ws
         this.localId
-        this.peerList
+        this.peerList  // A list of peer ids to connect to given by server and updated
         this.setup()
     }
     setup(){
@@ -27,17 +27,21 @@ class Network{
     establishConnectionList(){
         // Tries to ESTABLISH a connection with all peers in peerList
         this.peerList.forEach(id=>{
-            this.createConnection(id)
-            this.sendOffer(id)
+            if(!this.peerList[id]){
+                // If I've not already communicated with you, i'll create a connection
+                this.createConnection(id)
+                this.sendOffer(id)
+            }
         })
     }
-    createConnection(remoteId=this.peerList[0]){  // $$$$$$$$$$
+    createConnection(remoteId){  // $$$$$$$$$$
         const connection = new Connection(this.localId,remoteId,this.ws,this)
         this.connections[remoteId] = connection
 
+
         return connection
     }
-    sendOffer(remoteId=this.peerList[0]){  // $$$$$
+    sendOffer(remoteId){  // $$$$$
         this.connections[remoteId].sendOffer()
     }
 
@@ -81,12 +85,15 @@ class Network{
     }
     send(destId,data){
         // Sends data to ONE connection
-        this.connections[destId].send(data)
+        const connection = this.connections[destId]
+        if(connection.dataChannelReadyState === 1){
+            this.connections[destId].send(data)
+        }
     }
     broadcast(data){
         // Send data to ALL connections
         this.peerList.forEach(id=>{
-            this.connections[id].send(data)
+            this.send(id,data)
         })
     }
     deleteConnection(remoteId){
@@ -109,10 +116,12 @@ class Connection{
         this.remoteId = remoteId
         this.ws = ws
         this.dataChannel
+        this.dataChannelReadyState = 0
         this.parent = parent
         this.candidateBacklog = []  // list of ice canidadates that have yet to been added
 
         this.setup()
+        this.setDeleteTimer()
         return this
     }
     setup(){
@@ -205,16 +214,77 @@ class Connection{
     }
     setupDataChannel(){
         console.log('Datachannel established')
+
+        this.dataChannel.addEventListener('open',e=>{
+            this.dataChannelReadyState = 1
+        },{once:true})
         
         this.dataChannel.addEventListener('message',e=>{
             console.log('dataChannel message: ',e)
         })
         this.dataChannel.addEventListener('close',e=>{
             console.log('dataChannel CLOSED: ',e)
+            this.deleteConnection()
         })
     }
     send(data){
         this.dataChannel.send(data)
+    }
+    deleteConnection(){
+        this.parent.deleteConnection(this.remoteId)
+    }
+
+    setDeleteTimer(){
+        setTimeout(()=>{
+            if(this.dataChannelReadyState === 0){
+                console.log('DELETED SELF (this.remoteId)',this.remoteId)
+                console.log('Connection Timed out')
+                this.deleteConnection()
+            }
+        },30000)
+    }
+
+
+
+
+    getCandidateIds(stats) {
+        let ids = {}
+        stats.forEach(report => {
+            if (report.type == "candidate-pair" && report.nominated && report.state == "succeeded") {
+                //console.log("Found IDs")
+                ids = {
+                    localId: report.localCandidateId,
+                    remoteId: report.remoteCandidateId
+                }
+            }
+        });
+        return ids
+    }
+
+    getCandidateInfo(stats, candidateId) {
+        let info = null
+        stats.forEach(report => {
+            if (report.id == candidateId) {
+                console.log("Found Candidate")
+                info = report
+            }
+        })
+        return info
+    }
+
+    conncectionStats = async () => {
+        const stats = await this.pc.getStats(null)
+        const candidates = await this.getCandidateIds(stats)
+        console.log("candidates: ", candidates)
+        if (candidates !== {}) {
+            const localCadidate = await this.getCandidateInfo(stats, candidates.localId)
+            const remoteCadidate = await this.getCandidateInfo(stats, candidates.remoteId)
+            if (localCadidate !== null && remoteCadidate !== null) {
+                return [localCadidate, remoteCadidate]
+            }
+        }
+        // we did not find the candidates for whatever reeason
+        return [null, null]
     }
 }
 
@@ -238,7 +308,7 @@ const config = {
             username: 'webrtc'
         },
     ],
-    iceTransportPolicy: 'all' 
+    iceTransportPolicy: 'relay' //relay
 }
 
 function check(that){

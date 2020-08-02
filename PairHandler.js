@@ -30,7 +30,9 @@ PairHandler.prototype.getId = function(ws){
 
 PairHandler.prototype.getWs = function(id){
     if(!this.idToWebsocket[id]){
-        throw new Error('ERROR: no websocket exists at index',id)
+        console.warn('ERROR: no websocket exists at index',id)
+        console.warn('User given the idList had old copy')
+        return -1
     }
     return this.idToWebsocket[id]
 }
