@@ -63,6 +63,8 @@ wss.on('connection',ws=>{
 
         // Send
         destWs.send(newPayload)
+
+        console.log('payload',payload)
     })
     ws.on('close',e=>{
         idWebsocketPair.deleteByWs(ws)
