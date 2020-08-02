@@ -38,14 +38,16 @@ server.listen(PORT,()=>console.log('Listening on port: '+PORT))
 const wss = new ws.Server({server})
 
 wss.on('connection',ws=>{
-    console.log('NEW CONNECTION')
-    
-    // Give user list of all player ids
-    ws.send(JSON.stringify(idWebsocketPair.getIdList()))    // BEFORE YOU GIVE USER AN ID
+    console.log('NEW CONNECTION',idCounter+1)
 
-    // Update counter and pair
+    // Increment id counter and set id    
     idCounter++
     const id = idCounter
+    
+    // Give user list of all player ids
+    ws.send(JSON.stringify([id,idWebsocketPair.getIdList()]))    // BEFORE YOU GIVE USER AN ID
+
+    // Update pair
     idWebsocketPair.add(id,ws)
     
     // Event Listeners

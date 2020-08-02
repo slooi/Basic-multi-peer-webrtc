@@ -5,6 +5,7 @@ class Network{
     constructor(){
         this.connections = {}
         this.ws
+        this.localId
         this.peerList
         this.setup()
     }
@@ -18,24 +19,26 @@ class Network{
 
         this.ws.addEventListener('message',this.handleSignallingServer)
     }
-    createConnection(id=this.peerList[0]){
-        // ONLY RUN IF peerlist has something or got shiz from remote clients
-
-
-        // !@#!@#!@# change later
-        this.connections[id] = new Connection(id,this.ws)
-        return this.connections[id]
+    establishConnectionList(){
+        // Tries to ESTABLISH a connection with all peers in peerList
+        this.peerList.forEach(id=>{
+            this.createConnection(id)
+            this.sendOffer(id)
+        })
     }
-    sendOffer(){
-        // ONLY RUN IF peerlist has something or got shiz from remote clients
-        // $$$$$
-        const id = this.peerList[0] // $$$$$
-        this.connections[id].sendOffer()
+    createConnection(remoteId=this.peerList[0]){  // $$$$$$$$$$
+        const connection = new Connection(this.localId,remoteId,this.ws)
+        this.connections[remoteId] = connection
+
+        return connection
+    }
+    sendOffer(remoteId=this.peerList[0]){  // $$$$$
+        this.connections[remoteId].sendOffer()
     }
 
     handleSignallingServer = e => 
     {
-        console.log('message',e)
+        console.log('handleSignallingServer e.data:',e.data)
         if(this.peerList){
             // Two cases:
             // 1) A new peron is trying to establish a connection and has sent an offer
@@ -62,23 +65,22 @@ class Network{
             }
         }else{
             // THIS ONLY RUNS ONCE WHEN USER CONNECTS
+            const data =  JSON.parse(e.data)
 
-            // Create peerList
-            const peerList = JSON.parse(e.data)
-            this.peerList = peerList
+            // Extract data (localId, peerList)
+            this.localId = data[0]
+            this.peerList = data[1]
 
-            // For each id in peerList, create connection
-
-
-            //!@#!@#!@# need to complete
+            console.log('Your are: ',this.localId)
         }
     }
 }
 
 class Connection{
-    constructor(id,ws){
+    constructor(localId,remoteId,ws){
         this.pc
-        this.id = id
+        this.localId = localId
+        this.remoteId = remoteId
         this.ws = ws
 
         this.setup()
@@ -111,23 +113,31 @@ class Connection{
                 session = await this.pc.createAnswer()
             }
             await this.pc.setLocalDescription(session)
-            console.log('Your localDescription',this.pc.localDescription)
-            this.ws.sendPayload(this.id,this.pc.localDescription)
+            console.log('Connection to: ',this.remoteId,', has localDescription of:',this.pc.localDescription)
+            this.ws.sendPayload(this.remoteId,this.pc.localDescription)
         }catch(err){
             console.warn('ERROR:',err)
         }
     }
     handleSignallingServer = async (data,isOfferer) =>{
-        // Set remoteDescription
-        this.pc.setRemoteDescription(data)
-            .then(_=>{
-                console.log('Your remoteDescription',this.pc.remoteDescription)
-                if(!isOfferer){
-                    // Create answer
-                    this.createSession(false)
-                }
-            })
-            .catch(err=>console.warn(err))
+        //!@#!@#!@# handle for ice
+
+        if(data.sdp){
+            // Set remoteDescription
+            this.pc.setRemoteDescription(data)
+                .then(_=>{
+                    console.log('Connection to: ',this.remoteId,', has remoteDescription of:',this.pc.remoteDescription)
+                    if(!isOfferer){
+                        // Create answer
+                        this.createSession(false)
+                    }
+                })
+                .catch(err=>console.warn(err))
+        }else if(data.ice){
+
+        }else{
+            console.warn('ERROR: this should not be happening! Make sure not to send anything from remote client if candidate == undefined')
+        }
     }
 }
 

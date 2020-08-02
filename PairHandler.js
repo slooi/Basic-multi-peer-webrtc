@@ -51,7 +51,6 @@ PairHandler.prototype.getIdList = function(){
     for(let i=1;i<this.websocketIdArray.length;i+=2){
         idArray.push(this.websocketIdArray[i])
     }
-    console.log(idArray)
     return idArray//Object.keys(this.idToWebsocket).map(val=>Number(val))
 }
 
