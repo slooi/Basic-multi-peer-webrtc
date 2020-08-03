@@ -14,11 +14,6 @@ class Network{
         this.ws = new WebSocket(location.origin.replace(/^http/,'ws'))
         // ws
         this.ws.sendPayload = (destId,data)=>{
-            if(data.sdp){
-                console.log('Sending sdp')
-            }else{
-                console.log('Sending not')
-            }
             this.ws.send(JSON.stringify([destId,data]))
         }
 
@@ -37,7 +32,6 @@ class Network{
     createConnection(remoteId){  // $$$$$$$$$$
         const connection = new Connection(this.localId,remoteId,this.ws,this)
         this.connections[remoteId] = connection
-
 
         return connection
     }

@@ -2,6 +2,7 @@
 const express = require('express')
 const ws = require('ws')
 const https = require('https')
+const http = require('http')
 const path = require('path')
 const fs = require('fs')
 const PairHandler = require('./PairHandler.js')
@@ -26,10 +27,11 @@ app.get('/',(req,res)=>{
 
 
 // Server
-const server = https.createServer({
-    cert:fs.readFileSync(path.resolve(__dirname,'cert.pem')),
-    key:fs.readFileSync(path.resolve(__dirname,'key.pem'))
-},app)
+// const server = https.createServer({
+//     cert:fs.readFileSync(path.resolve(__dirname,'cert.pem')),
+//     key:fs.readFileSync(path.resolve(__dirname,'key.pem'))
+// },app)
+const server = http.createServer({},app)
 
 server.listen(PORT,()=>console.log('Listening on port: '+PORT))
 
